@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Intensity Explorer</title>
+
+<style>
+  body {
+    margin: 0;
+    padding: 25px;
+    font-family: Arial, sans-serif;
+    background: #0b1020;
+    color: white;
+  }
+
+  h1, .subtitle {
+    text-align: center;
+  }
+
+  .subtitle {
+    color: #aab6cf;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .panel {
+    padding: 20px;
+    background: #131b2e;
+    border: 1px solid #2b3853;
+    border-radius: 15px;
+  }
+
+  .sun {
+    width: 220px;
+    height: 220px;
+    margin: 25px auto;
+    border-radius: 50%;
+    position: relative;
+    background: radial-gradient(
+      circle,
+      #fff8c9,
+      #ffe78a 35%,
+      #ffb735 70%,
+      #df701d
+    );
+    box-shadow: 0 0 35px #ffb73555;
+  }
+
+  #marker {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #77d7ff;
+    border: 3px solid white;
+    transform: translate(-50%, -50%);
+  }
+
+  input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+    accent-color: #ffd166;
+  }
+
+  .labels {
+    display: flex;
+    justify-content: space-between;
+    color: #aab6cf;
+    font-size: 13px;
+  }
+
+  .reading {
+    margin-top: 20px;
+    padding: 15px;
+    background: #0e1628;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffd166;
+  }
+
+  canvas {
+    width: 100%;
+    background: #0e1628;
+    border-radius: 10px;
+  }
+
+  #explanation {
+    line-height: 1.5;
+    color: #dbe7ff;
+  }
+
+  @media (max-width: 650px) {
+    .container {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<h1>Solar Intensity Explorer</h1>
+<p class="subtitle">
+  Move from the centre of the Sun towards its edge.
+</p>
+
+<div class="container">
+
+  <section class="panel">
+    <h2>1. Select a position</h2>
+
+    <div class="sun">
+      <div id="marker"></div>
+    </div>
+
+    <label for="slider">Position from centre</label>
+    <input
+      id="slider"
+      type="range"
+      min="0"
+      max="100"
+      value="0"
+    >
+
+    <div class="labels">
+      <span>Centre</span>
+      <span>Limb</span>
+    </div>
+
+    <div class="reading">
+      <p id="location">Centre</p>
+      <p>Relative intensity</p>
+      <div class="value" id="intensity">100%</div>
+      <p id="distance">0% from centre</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Intensity graph</h2>
+
+    <canvas
+      id="graph"
+      width="400"
+      height="280"
+    ></canvas>
+
+    <p id="explanation">
+      At the centre, intensity is at its maximum
+      in this illustrative demonstration.
+    </p>
+  </section>
+
+</div>
+
+<script>
+  const slider = document.getElementById("slider");
+  const marker = document.getElementById("marker");
+  const locationText = document.getElementById("location");
+  const intensityText = document.getElementById("intensity");
+  const distanceText = document.getElementById("distance");
+  const explanation = document.getElementById("explanation");
+  const canvas = document.getElementById("graph");
+  const ctx = canvas.getContext("2d");
+
+  // Illustrative intensity model.
+  // r = 0 means centre; r = 1 means edge.
+  // Replace this with the actual calculation from your code.
+  function calculateIntensity(r) {
+    return 1 - 0.72 * r * r;
+  }
+
+  function drawGraph(selectedR) {
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const left = 45;
+    const right = width - 15;
+    const top = 20;
+    const bottom = height - 40;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw graph axes.
+    ctx.strokeStyle = "#aab6cf";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left, top);
+    ctx.lineTo(left, bottom);
+    ctx.lineTo(right, bottom);
+    ctx.stroke();
+
+    // Draw intensity curve.
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+
+    for (let i = 0; i <= 100; i++) {
+      const r = i / 100;
+      const intensity = calculateIntensity(r);
+
+      const x = left + r * (right - left);
+      const y = bottom - intensity * (bottom - top);
+
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    ctx.stroke();
+
+    // Mark the currently selected position.
+    const intensity = calculateIntensity(selectedR);
+    const x = left + selectedR * (right - left);
+    const y = bottom - intensity * (bottom - top);
+
+    ctx.strokeStyle = "#77d7ff";
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "#77d7ff";
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Axis labels.
+    ctx.fillStyle = "#aab6cf";
+    ctx.font = "12px Arial";
+    ctx.fillText("Intensity", 5, 13);
+    ctx.fillText("Centre", left, height - 15);
+    ctx.fillText("Edge", right - 25, height - 15);
+  }
+
+  function update() {
+    const position = Number(slider.value);
+    const r = position / 100;
+
+    const intensity = calculateIntensity(r);
+    const percentage = Math.round(intensity * 100);
+
+    // Move the marker across the solar disk.
+    marker.style.left = (50 + r * 45) + "%";
+
+    // Update the readings.
+    locationText.textContent =
+      position === 0 ? "Centre" :
+      position === 100 ? "Limb" :
+      position < 35 ? "Inner region" :
+      position < 70 ? "Middle region" :
+      "Outer region";
+
+    intensityText.textContent = percentage + "%";
+    distanceText.textContent = position + "% from centre";
+
+    // Update the explanation.
+    explanation.textContent =
+      `At ${r.toFixed(2)} solar radii from the centre, ` +
+      `the illustrative relative intensity is ${percentage}%.`;
+
+    // Redraw the graph.
+    drawGraph(r);
+  }
+
+  slider.addEventListener("input", update);
+
+  // Display the initial state.
+  update();
+</script>
+
+</body>
+</html>
